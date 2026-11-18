@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testes Automatizados no Front-end | Por que testar não é opcional</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800;900&family=Hanken+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* =========================================================
+           RESET
+        ========================================================= */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            /* ===== NOVA PALETA: petróleo + menta + âmbar ===== */
+            --primary: #14b8a6;        /* teal/menta */
+            --primary-dark: #0f766e;
+            --primary-light: #5eead4;
+            --accent: #f59e0b;         /* âmbar */
+            --accent-2: #38bdf8;       /* azul claro */
+            --violet: #a78bfa;
+            --rose: #fb7185;
+            --lime: #a3e635;
+            --bg: #06141b;             /* fundo azul-petróleo profundo */
+            --bg-2: #0a1f29;
+            --white: #ffffff;
+            --text: #e8f1f2;
+            --muted: #9fb3b8;
+            --muted-2: #6b858c;
+            --card: rgba(255, 255, 255, 0.045);
+            --card-hover: rgba(255, 255, 255, 0.075);
+            --border: rgba(255, 255, 255, 0.09);
+            --shadow: 0 20px 70px rgba(0, 0, 0, 0.45);
+            --radius: 22px;
+            --transition: 0.35s cubic-bezier(.2, .8, .2, 1);
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+            font-family: "Hanken Grotesk", sans-serif;
+        }
+
+        button {
+            font: inherit;
+        }
+
+        .presentation {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(circle at 80% 20%, rgba(20, 184, 166, .08), transparent 30%), var(--bg);
+        }
+
+        .slides {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: clamp(70px, 8vh, 100px) clamp(25px, 6vw, 90px) 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: scale(1.015);
+            transition: opacity .5s ease, transform .7s cubic-bezier(.2, .8, .2, 1), visibility .5s ease;
+            overflow-y: auto;
+            overflow-x: hidden;
+            background: var(--bg);
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+            transform: scale(1);
+            z-index: 2;
+        }
+
+        .slide::-webkit-scrollbar {
+            width: 5px;
+        }
+        .slide::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .slide::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 20px;
+        }
+
+        .slide.content::before {
+            content: "";
+            position: absolute;
+            width: 700px;
+            height: 700px;
+            right: -350px;
+            top: -350px;
+            background: radial-gradient(circle, rgba(20, 184, 166, .12), transparent 68%);
+            pointer-events: none;
+        }
+
+        .slide.content::after {
+            content: "";
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            left: -350px;
+            bottom: -350px;
+            background: radial-gradient(circle, rgba(56, 189, 248, .06), transparent 70%);
+            pointer-events: none;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 2;
+            width: min(1100px, 100%);
+            margin-inline: auto;
+        }
+
+        .slide-number {
+            position: absolute;
+            top: 28px;
+            right: 45px;
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            font-family: "Bricolage Grotesque", sans-serif;
+            font-weight: 800;
+            user-select: none;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .slide-number .current {
+            color: var(--primary);
+            font-size: 2rem;
+            line-height: 1;
+        }
+        .slide-number .separator {
+            color: rgba(255, 255, 255, .15);
+        }
+        .slide-number .total {
+            color: rgba(255, 255, 255, .18);
+            font-size: 1rem;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        .title-icon {
+            flex-shrink: 0;
+            width: 48px;
+            height: 48px;
+            display: grid;
+            place-items: center;
+            color: #06141b;
+            border-radius: 15px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            box-shadow: 0 12px 35px rgba(20, 184, 166, .28);
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: "Bricolage Grotesque", sans-serif;
+            letter-spacing: -.035em;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 4vw, 3.1rem);
+            line-height: 1.05;
+            font-weight: 900;
+        }
+
+        .title-line {
+            position: relative;
+        }
+
+        .title-line::after {
+            content: "";
+            display: block;
+            width: 65px;
+            height: 4px;
+            margin-top: 18px;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .description {
+            max-width: 900px;
+            margin-bottom: 18px;
+            color: rgba(255, 255, 255, .72);
+            font-size: clamp(1rem, 1.5vw, 1.15rem);
+            line-height: 1.75;
+        }
+
+        .description strong {
+            color: var(--white);
+        }
+
+        .primary { color: var(--primary); }
+        .blue { color: var(--accent-2); }
+        .gold { color: var(--accent); }
+        .purple { color: var(--violet); }
+        .pink { color: var(--rose); }
+        .green { color: var(--lime); }
+
+        .highlight {
+            position: relative;
+            max-width: 900px;
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin: 20px 0;
+            padding: 17px 20px;
+            color: rgba(255, 255, 255, .73);
+            background: linear-gradient(90deg, rgba(20, 184, 166, .10), rgba(255, 255, 255, .025));
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-left: 4px solid var(--primary);
+            border-radius: 15px;
+            line-height: 1.6;
+        }
+
+        .highlight i {
+            color: var(--primary);
+            margin-top: 3px;
+        }
+        .highlight strong {
+            color: var(--white);
+        }
+
+        .highlight.gold-highlight {
+            border-left-color: var(--accent);
+            background: linear-gradient(90deg, rgba(245, 158, 11, .08), rgba(255, 255, 255, .02));
+        }
+        .highlight.gold-highlight i {
+            color: var(--accent);
+        }
+
+        .highlight.purple-highlight {
+            border-left-color: var(--violet);
+            background: linear-gradient(90deg, rgba(167, 139, 250, .10), rgba(255, 255, 255, .02));
+        }
+        .highlight.purple-highlight i {
+            color: var(--violet);
+        }
+
+        .highlight.green-highlight {
+            border-left-color: var(--lime);
+            background: linear-gradient(90deg, rgba(163, 230, 53, .09), rgba(255, 255, 255, .02));
+        }
+        .highlight.green-highlight i {
+            color: var(--lime);
+        }
+
+        .grid {
+            display: grid;
+            width: 100%;
+            gap: 18px;
+            margin: 22px 0;
+        }
+
+        .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+        .card {
+            position: relative;
+            padding: 22px 20px;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            text-align: left;
+            background: linear-gradient(145deg, rgba(255, 255, 255, .065), rgba(255, 255, 255, .025));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: transform var(--transition), border-color var(--transition), background var(--transition);
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), transparent);
+            opacity: .85;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            background: var(--card-hover);
+            border-color: rgba(20, 184, 166, .40);
+        }
+
+        .card-icon {
+            width: 43px;
+            height: 43px;
+            display: grid;
+            place-items: center;
+            margin-bottom: 14px;
+            color: var(--primary);
+            background: rgba(20, 184, 166, .12);
+            border-radius: 13px;
+            font-size: 1.1rem;
+        }
+
+        .card-icon.gold {
+            color: var(--accent);
+            background: rgba(245, 158, 11, .12);
+        }
+        .card-icon.blue {
+            color: var(--accent-2);
+            background: rgba(56, 189, 248, .12);
+        }
+        .card-icon.green {
+            color: var(--lime);
+            background: rgba(163, 230, 53, .12);
+        }
+        .card-icon.purple {
+            color: var(--violet);
+            background: rgba(167, 139, 250, .12);
+        }
+        .card-icon.pink {
+            color: var(--rose);
+            background: rgba(251, 113, 133, .12);
+        }
+
+        .card h4 {
+            margin-bottom: 7px;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: white;
+        }
+
+        .card p {
+            color: rgba(255, 255, 255, .59);
+            font-size: .9rem;
+            line-height: 1.55;
+        }
+
+        .card p strong {
+            color: rgba(255, 255, 255, .88);
+        }
+
+        .section-slide {
+            padding: 40px;
+            text-align: center;
+            background: radial-gradient(circle at 75% 25%, rgba(255, 255, 255, .14), transparent 25%), linear-gradient(135deg, #0f766e, #06141b 70%);
+        }
+
+        .section-slide::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            opacity: .16;
+            background-image: linear-gradient(135deg, transparent 0 48%, rgba(94, 234, 212, .30) 49%, transparent 50%);
+            background-size: 65px 65px;
+            pointer-events: none;
+        }
+
+        .section-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .section-icon {
+            width: 95px;
+            height: 95px;
+            display: grid;
+            place-items: center;
+            margin-bottom: 25px;
+            border-radius: 28px;
+            color: var(--primary-light);
+            background: rgba(0, 0, 0, .25);
+            border: 1px solid rgba(94, 234, 212, .35);
+            font-size: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .30);
+        }
+
+        .section-slide h1 {
+            font-size: clamp(2.8rem, 6vw, 5rem);
+            line-height: .95;
+            color: white;
+            font-weight: 900;
+            text-shadow: 0 10px 35px rgba(0, 0, 0, .18);
+        }
+
+        .section-line {
+            width: 80px;
+            height: 4px;
+            margin: 24px 0;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--primary-light), var(--accent));
+        }
+
+        .section-slide p {
+            color: rgba(255, 255, 255, .82);
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        .cover {
+            padding: 0;
+            background: #000;
+        }
+
+        .cover-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, rgba(3, 14, 19, .92) 0%, rgba(6, 20, 27, .55) 45%, rgba(6, 20, 27, .85) 100%);
+            z-index: 1;
+        }
+
+        .cover::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            background: radial-gradient(circle at 50% 50%, transparent 20%, rgba(0, 0, 0, .40) 100%);
+            pointer-events: none;
+        }
+
+        .cover-content {
+            position: relative;
+            z-index: 5;
+            width: min(1000px, 90%);
+            text-align: center;
+        }
+
+        .cover-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 25px rgba(20, 184, 166, .55));
+        }
+
+        .cover h1 {
+            font-size: clamp(3rem, 7vw, 6rem);
+            line-height: .9;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 10px 50px rgba(0, 0, 0, .6);
+        }
+
+        .cover h1 .hero-red {
+            color: var(--primary);
+        }
+        .cover h1 .hero-blue {
+            color: var(--accent-2);
+        }
+
+        .cover-subtitle {
+            margin-top: 25px;
+            color: rgba(255, 255, 255, .82);
+            font-size: clamp(1rem, 2vw, 1.4rem);
+            letter-spacing: .18em;
+            text-transform: uppercase;
+        }
+
+        .cover-line {
+            width: 100px;
+            height: 4px;
+            margin: 25px auto;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .cover-quote {
+            color: rgba(255, 255, 255, .62);
+            font-size: 1rem;
+            font-weight: 300;
+            letter-spacing: .08em;
+        }
+
+        .code-block {
+            max-width: 900px;
+            margin: 20px 0;
+            padding: 20px 24px;
+            background: rgba(0, 0, 0, .55);
+            border: 1px solid rgba(255, 255, 255, .09);
+            border-left: 4px solid var(--lime);
+            border-radius: 15px;
+            overflow-x: auto;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: .85rem;
+            line-height: 1.7;
+            color: #d4d4d4;
+        }
+
+        .code-block .kw { color: #c586c0; }
+        .code-block .fn { color: #dcdcaa; }
+        .code-block .str { color: #ce9178; }
+        .code-block .cm { color: #6a9955; }
+        .code-block .var { color: #9cdcfe; }
+
+        .navigation {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(6, 20, 27, .82);
+            border: 1px solid rgba(94, 234, 212, .14);
+            border-radius: 999px;
+            backdrop-filter: blur(18px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, .5);
+        }
+
+        .nav-btn {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, .09);
+            border-radius: 50%;
+            color: white;
+            background: transparent;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .nav-btn:hover {
+            color: #06141b;
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .counter {
+            min-width: 75px;
+            text-align: center;
+            color: rgba(255, 255, 255, .45);
+            font-family: "Bricolage Grotesque", sans-serif;
+            font-weight: 700;
+            font-size: .85rem;
+        }
+
+        .counter-current {
+            color: var(--primary);
+        }
+
+        .progress {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 0;
+            height: 4px;
+            z-index: 110;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            box-shadow: 0 0 20px rgba(20, 184, 166, .40);
+            transition: width .5s ease;
+        }
+
+        .dots {
+            position: fixed;
+            left: 50%;
+            bottom: 83px;
+            transform: translateX(-50%);
+            z-index: 90;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            max-width: 75vw;
+            overflow: hidden;
+        }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            flex-shrink: 0;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .17);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .dot:hover {
+            background: rgba(20, 184, 166, .7);
+        }
+
+        .dot.active {
+            width: 24px;
+            border-radius: 99px;
+            background: var(--primary);
+        }
+
+        .keyboard-help {
+            position: fixed;
+            top: 28px;
+            left: 35px;
+            z-index: 50;
+            color: rgba(255, 255, 255, .28);
+            font-size: .72rem;
+            letter-spacing: .04em;
+        }
+
+        .keyboard-help kbd {
+            padding: 3px 6px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, .04);
+            font-family: inherit;
+        }
+
+        .animate {
+            opacity: 0;
+            transform: translateY(25px);
+        }
+
+        .slide.active .animate {
+            animation: appear .65s cubic-bezier(.2, .8, .2, 1) forwards;
+        }
+
+        .slide.active .delay-1 { animation-delay: .08s; }
+        .slide.active .delay-2 { animation-delay: .16s; }
+        .slide.active .delay-3 { animation-delay: .24s; }
+        .slide.active .delay-4 { animation-delay: .32s; }
+
+        @keyframes appear {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .slide {
+                padding: 75px 30px 100px;
+            }
+            .grid-3,
+            .grid-4 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .keyboard-help {
+                display: none;
+            }
+            .dots {
+                display: none;
+            }
+        }
+
+        @media (max-width: 650px) {
+            .slide {
+                padding: 65px 20px 95px;
+            }
+            .slide-number {
+                top: 18px;
+                right: 22px;
+            }
+            .slide-number .current {
+                font-size: 1.5rem;
+            }
+            .slide-number .total {
+                font-size: .8rem;
+            }
+            .title-row {
+                align-items: flex-start;
+            }
+            .title-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 12px;
+            }
+            h2 {
+                font-size: 1.8rem;
+            }
+            .description {
+                font-size: .95rem;
+                line-height: 1.65;
+            }
+            .grid-2,
+            .grid-3,
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            .card {
+                min-height: auto;
+                padding: 18px;
+            }
+            .navigation {
+                bottom: 15px;
+            }
+            .nav-btn {
+                width: 38px;
+                height: 38px;
+            }
+            .counter {
+                min-width: 55px;
+            }
+            .cover h1 {
+                font-size: 2.6rem;
+            }
+            .cover-subtitle {
+                font-size: .85rem;
+                letter-spacing: .12em;
+            }
+            .cover-quote {
+                font-size: .85rem;
+            }
+            .section-slide h1 {
+                font-size: 2.8rem;
+            }
+            .section-icon {
+                width: 75px;
+                height: 75px;
+                font-size: 2.3rem;
+            }
+            .code-block {
+                font-size: .72rem;
+                padding: 15px;
+            }
+        }
+
+        @media print {
+            html,
+            body {
+                overflow: visible;
+                background: white;
+            }
+            .navigation,
+            .dots,
+            .progress,
+            .keyboard-help,
+            .slide-number {
+                display: none !important;
+            }
+            .slide {
+                position: relative;
+                width: 100%;
+                min-height: 100vh;
+                height: auto;
+                opacity: 1 !important;
+                visibility: visible !important;
+                pointer-events: auto !important;
+                page-break-after: always;
+                background: white !important;
+                color: black !important;
+            }
+            .cover-overlay {
+                display: none;
+            }
+            .cover {
+                background: #111 !important;
+            }
+            .card {
+                color: black;
+                background: white;
+                border-color: #ddd;
+                box-shadow: none;
+            }
+            .card h4,
+            .card p,
+            .description {
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="presentation" id="presentation">
+
+        <div class="keyboard-help">
+            Use <kbd>←</kbd> <kbd>→</kbd> ou <kbd>Espaço</kbd> para navegar
+        </div>
+
+        <div class="progress" id="progress"></div>
+
+        <div class="dots" id="dots"></div>
+
+        <nav class="navigation" aria-label="Navegação da apresentação">
+
+            <button class="nav-btn" id="previous" aria-label="Slide anterior" title="Anterior">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+
+            <div class="counter">
+                <span class="counter-current" id="currentNumber">01</span>
+                <span>/</span>
+                <span id="totalNumber">17</span>
+            </div>
+
+            <button class="nav-btn" id="next" aria-label="Próximo slide" title="Próximo">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+
+            <button class="nav-btn" id="fullscreen" aria-label="Tela cheia" title="Tela cheia">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+
+        </nav>
+
+
+        <section class="slides" id="slides">
+
+            <!-- 01 — CAPA -->
+            <article class="slide cover active">
+
+                <div class="slide-number">
+                    <span class="current">01</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="cover-overlay"></div>
+
+                <div class="cover-content">
+
+                    <div class="cover-icon">
+                        <i class="fa-solid fa-vial-circle-check"></i>
+                    </div>
+
+                    <h1>
+                        <span class="hero-red">Testes</span> no <span class="hero-blue">Front-end</span>
+                    </h1>
+
+                    <p class="cover-subtitle">
+                        Por que testar não é opcional
+                    </p>
+
+                    <div class="cover-line"></div>
+
+                    <p class="cover-quote">
+                        "Sem testes, você está apenas torcendo."
+                    </p>
+
+                </div>
+
+            </article>
+
+
+            <!-- 02 — A TESE -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">02</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Código sem testes é código sem garantia
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        <strong>TypeScript</strong> garante que os tipos estão corretos —
+                        mas não garante que o <strong>comportamento</strong> está correto.
+                        A checagem de tipos não avisa se uma função utilitária retorna o
+                        valor errado, se um componente quebra ao interagir, ou se uma
+                        mudança de estado destrói um fluxo de trabalho.
+                    </p>
+
+                    <div class="highlight gold-highlight animate delay-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+
+                        <div>
+                            <strong>O ponto central:</strong>
+                            a complexidade do front-end — gerenciamento de estado da UI,
+                            fluxos do usuário, orquestração de API, validação no cliente —
+                            torna os testes parte necessária de software de produção,
+                            e não um item opcional.
+                        </div>
+                    </div>
+
+                    <div class="grid grid-3 animate delay-3">
+
+                        <div class="card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-code"></i>
+                            </div>
+
+                            <h4>Tipos ≠ Comportamento</h4>
+
+                            <p>
+                                O compilador valida contratos, não regras de negócio
+                                nem efeitos colaterais.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-arrows-spin"></i>
+                            </div>
+
+                            <h4>Estado é frágil</h4>
+
+                            <p>
+                                Mudanças de estado disparam efeitos em cascata
+                                difíceis de prever sem verificação.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-user-gear"></i>
+                            </div>
+
+                            <h4>Usuário não segue o roteiro</h4>
+
+                            <p>
+                                Fluxos reais cobrem caminhos que nenhum
+                                desenvolvedor testou manualmente.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 03 — A PIRÂMIDE -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">03</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            A Pirâmide de Testes
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        Uma estratégia saudável distribui os testes em camadas:
+                        <strong>muitos testes unitários</strong>,
+                        <strong>alguns testes de integração</strong> e
+                        <strong>poucos testes E2E</strong>.
+                    </p>
+
+                    <div class="grid grid-3 animate delay-2">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-cube"></i>
+                            </div>
+
+                            <h4>Unitários</h4>
+
+                            <p>
+                                <strong>Mais numerosos.</strong>
+                                Mais rápidos, baratos e estáveis.
+                                Testam funções e componentes isolados.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-puzzle-piece"></i>
+                            </div>
+
+                            <h4>Integração</h4>
+
+                            <p>
+                                <strong>Quantidade média.</strong>
+                                Velocidade média.
+                                Verificam a colaboração entre módulos e fronteiras.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-route"></i>
+                            </div>
+
+                            <h4>E2E</h4>
+
+                            <p>
+                                <strong>Menos numerosos.</strong>
+                                Mais lentos e frágeis, mas validam
+                                caminhos reais do usuário.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div class="highlight animate delay-3">
+                        <i class="fa-solid fa-scale-balanced"></i>
+
+                        <div>
+                            <strong>Equilíbrio:</strong>
+                            testes unitários dão feedback rápido e barato;
+                            E2E dão confiança sobre a jornada completa —
+                            os dois são necessários, em proporções diferentes.
+                        </div>
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 04 — UNITÁRIOS -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">04</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-cube"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Testes Unitários — A Primeira Linha de Defesa
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        Testes unitários validam a menor unidade testável
+                        <strong>em isolamento</strong>. No front-end, uma "unidade"
+                        pode ser uma função pura, um método utilitário ou um
+                        componente de UI independente.
+                    </p>
+
+                    <div class="highlight gold-highlight animate delay-2">
+                        <i class="fa-solid fa-lightbulb"></i>
+
+                        <div>
+                            <strong>Bônus:</strong> testes unitários também forçam
+                            você a revisar a especificação — há lacunas? há
+                            ambiguidades? O teste expõe isso antes do usuário.
+                        </div>
+                    </div>
+
+                    <div class="grid grid-2 animate delay-3">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+
+                            <h4>Onde brilham</h4>
+
+                            <p>
+                                Funções utilitárias, validações no cliente,
+                                transformação de dados, formatação,
+                                cálculo de estado derivado.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-xmark"></i>
+                            </div>
+
+                            <h4>Onde não bastam</h4>
+
+                            <p>
+                                Fluxos completos do usuário, interações
+                                entre módulos, integração real com APIs
+                                e navegador.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 05 — INTEGRAÇÃO -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">05</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-puzzle-piece"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Testes de Integração — Onde os Bugs Realmente Vivem
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        Testes de integração verificam a
+                        <strong>colaboração</strong> entre múltiplos módulos ou
+                        componentes. Muitos defeitos reais nascem exatamente nas
+                        <strong>fronteiras</strong> entre módulos.
+                    </p>
+
+                    <div class="grid grid-3 animate delay-2">
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-arrows-left-right"></i>
+                            </div>
+
+                            <h4>Fronteiras</h4>
+
+                            <p>
+                                Uma atualização de estado dispara um efeito
+                                colateral errado.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-file-signature"></i>
+                            </div>
+
+                            <h4>Contratos</h4>
+
+                            <p>
+                                A validação do formulário e a lógica de
+                                envio se desencontram.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon purple">
+                                <i class="fa-solid fa-plug"></i>
+                            </div>
+
+                            <h4>Compatibilidade</h4>
+
+                            <p>
+                                A saída do componente A tem um formato
+                                que o componente B não consome.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div class="highlight animate delay-3">
+                        <i class="fa-solid fa-shield-halved"></i>
+
+                        <div>
+                            <strong>Vantagem:</strong> integração oferece
+                            cobertura mais realista que o unitário, ao mesmo
+                            tempo em que evita todo o custo do navegador.
+                            É a camada intermediária da pirâmide.
+                        </div>
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 06 — E2E -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">06</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-route"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            E2E — A Última Barreira
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        Testes End-to-End simulam <strong>ações reais do usuário</strong>:
+                        clicar em botões, preencher formulários, navegar entre páginas,
+                        e validar se a cadeia completa — da UI ao backend e ao banco de
+                        dados — funciona como esperado.
+                    </p>
+
+                    <div class="highlight gold-highlight animate delay-2">
+                        <i class="fa-solid fa-lock"></i>
+
+                        <div>
+                            <strong>O que eles protegem:</strong>
+                            caminhos críticos do negócio — login, pagamento,
+                            fluxos centrais. São poucos, lentos e caros de manter,
+                            mas a confiança que oferecem
+                            <strong>nenhuma outra camada substitui</strong>.
+                        </div>
+                    </div>
+
+                    <div class="grid grid-2 animate delay-3">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-thumbs-up"></i>
+                            </div>
+
+                            <h4>Forças</h4>
+
+                            <p>
+                                Valida a jornada real do usuário, integra
+                                front + back + dados, detecta problemas
+                                de configuração e ambiente.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-gauge-high"></i>
+                            </div>
+
+                            <h4>Custos</h4>
+
+                            <p>
+                                Lentos, mais frágeis e caros de manter.
+                                Devem ser reservados para os caminhos
+                                mais valiosos do produto.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 07 — SEÇÃO FERRAMENTAS -->
+            <article class="slide section-slide">
+
+                <div class="slide-number">
+                    <span class="current">07</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="section-content">
+
+                    <div class="section-icon">
+                        <i class="fa-solid fa-toolbox"></i>
+                    </div>
+
+                    <h1>Ferramentas</h1>
+
+                    <div class="section-line"></div>
+
+                    <p>
+                        O ecossistema do front-end moderno
+                    </p>
+
+                </div>
+
+            </article>
+
+
+            <!-- 08 — FERRAMENTAS DESENVOLVEDOR -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">08</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-code"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Ferramentas — Lado do Desenvolvedor
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-3 animate delay-1">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+
+                            <h4>Vitest / Jest</h4>
+
+                            <p>
+                                Frameworks de testes unitários.
+                                <strong>Vitest</strong> tem suporte nativo a
+                                Vite/ESM; <strong>Jest</strong> tem ecossistema
+                                mais maduro, porém configuração mais pesada.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-vial"></i>
+                            </div>
+
+                            <h4>Testing Library</h4>
+
+                            <p>
+                                Testa componentes a partir da
+                                <strong>perspectiva do usuário</strong>
+                                (papéis, rótulos, texto), incentivando
+                                testes resistentes a refatoração.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon purple">
+                                <i class="fa-solid fa-masks-theater"></i>
+                            </div>
+
+                            <h4>Playwright</h4>
+
+                            <p>
+                                Framework E2E moderno, cross-browser,
+                                com espera automática e depuração
+                                avançada via Trace Viewer.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-network-wired"></i>
+                            </div>
+
+                            <h4>MSW</h4>
+
+                            <p>
+                                Mock Service Worker: intercepta
+                                requisições de rede no nível do service
+                                worker, com respostas consistentes.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon pink">
+                                <i class="fa-solid fa-magnifying-glass-chart"></i>
+                            </div>
+
+                            <h4>SonarQube</h4>
+
+                            <p>
+                                Análise estática: detecta code smells,
+                                vulnerabilidades e gaps de cobertura
+                                antes da execução dos testes.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+
+                            <h4>Cobertura</h4>
+
+                            <p>
+                                Istanbul / c8: medem cobertura de linhas,
+                                branches e funções — úteis como indicador,
+                                não como meta absoluta.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 09 — FERRAMENTAS QA -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">09</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Ferramentas — Lado de QA
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-2 animate delay-1">
+
+                        <div class="card">
+                            <div class="card-icon purple">
+                                <i class="fa-solid fa-masks-theater"></i>
+                            </div>
+
+                            <h4>Cypress / Playwright</h4>
+
+                            <p>
+                                Automação moderna de UI Web. Amigáveis ao
+                                ecossistema JS/TS, com excelente
+                                experiência de depuração.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon">
+                                <i class="fa-solid fa-globe"></i>
+                            </div>
+
+                            <h4>Selenium</h4>
+
+                            <p>
+                                Automação Web tradicional. Comunidade
+                                ampla e suporte a muitas linguagens,
+                                mas com custo de manutenção maior.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-cloud"></i>
+                            </div>
+
+                            <h4>BrowserStack / LambdaTest</h4>
+
+                            <p>
+                                Nuvens de navegadores e dispositivos
+                                reais: cobertura de ambientes reais
+                                com execução paralela.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            </div>
+
+                            <h4>mabl / TestRigor</h4>
+
+                            <p>
+                                Ferramentas low-code / com IA: reduzem a
+                                barreira de scripts e atendem cenários
+                                de regressão intensiva.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 10 — SEÇÃO PLAYWRIGHT -->
+            <article class="slide section-slide">
+
+                <div class="slide-number">
+                    <span class="current">10</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="section-content">
+
+                    <div class="section-icon">
+                        <i class="fa-solid fa-masks-theater"></i>
+                    </div>
+
+                    <h1>Playwright</h1>
+
+                    <div class="section-line"></div>
+
+                    <p>
+                        O padrão moderno para E2E
+                    </p>
+
+                </div>
+
+            </article>
+
+
+            <!-- 11 — PLAYWRIGHT VISÃO GERAL -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">11</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-masks-theater"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Playwright — Visão Geral
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        <strong class="primary">Playwright</strong> é o framework
+                        open-source de testes End-to-End da Microsoft, lançado
+                        em 2020. Ele automatiza ações reais do usuário — clicar,
+                        digitar, navegar — e espera que o elemento esteja
+                        interativo antes de agir, como "um usuário muito rápido".
+                    </p>
+
+                    <div class="highlight gold-highlight animate delay-2">
+                        <i class="fa-solid fa-trophy"></i>
+
+                        <div>
+                            <strong>Adoção:</strong> dados do StateOfJS mostram
+                            popularidade e retenção crescentes do Playwright
+                            na comunidade de desenvolvimento Web — hoje, uma
+                            das principais escolhas para E2E no front-end moderno.
+                        </div>
+                    </div>
+
+                    <div class="grid grid-4 animate delay-3">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-brands fa-chrome"></i>
+                            </div>
+
+                            <h4>Chromium</h4>
+
+                            <p>Motor do Chrome e do Edge.</p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-brands fa-firefox-browser"></i>
+                            </div>
+
+                            <h4>Firefox</h4>
+
+                            <p>Motor Gecko, da Mozilla.</p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-brands fa-safari"></i>
+                            </div>
+
+                            <h4>WebKit</h4>
+
+                            <p>Motor do Safari e iOS.</p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon purple">
+                                <i class="fa-solid fa-mobile-screen"></i>
+                            </div>
+
+                            <h4>Dispositivos</h4>
+
+                            <p>Emulação de dispositivos e viewports.</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 12 — PLAYWRIGHT VANTAGENS -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">12</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Por que Playwright?
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-2 animate delay-1">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-code-branch"></i>
+                            </div>
+
+                            <h4>API unificada</h4>
+
+                            <p>
+                                A mesma API cobre Chromium, WebKit e Firefox,
+                                com emulação de dispositivos e modos
+                                headless e com interface.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+
+                            <h4>Testes resilientes</h4>
+
+                            <p>
+                                <strong>Espera automática</strong>
+                                (sem timeout manual) e
+                                <strong>assertivas com retry</strong>
+                                eliminam a causa raiz de testes frágeis.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+
+                            <h4>Isolamento</h4>
+
+                            <p>
+                                Cada teste roda em um BrowserContext
+                                independente: execução paralela e
+                                sem interferência entre testes.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon purple">
+                                <i class="fa-solid fa-wrench"></i>
+                            </div>
+
+                            <h4>Ferramentas do desenvolvedor</h4>
+
+                            <p>
+                                Codegen para gravação, Trace Viewer
+                                para depuração com "viagem no tempo"
+                                e integração profunda com o VS Code.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 13 — PLAYWRIGHT CÓDIGO -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">13</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-terminal"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Playwright na Prática
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        Um teste de fluxo de login: os <strong>locators</strong>
+                        esperam automaticamente e as <strong>assertivas</strong>
+                        tentam novamente até o timeout — sem <code>sleep</code> manual.
+                    </p>
+
+                    <div class="code-block animate delay-2">
+<span class="kw">test</span>(<span class="str">'fluxo de login'</span>, <span class="kw">async</span> ({ page }) =&gt; {
+  <span class="kw">await</span> page.<span class="fn">goto</span>(<span class="str">'/login'</span>);
+  <span class="kw">await</span> page.<span class="fn">getByLabel</span>(<span class="str">'Email'</span>).<span class="fn">fill</span>(<span class="str">'user@test.com'</span>);
+  <span class="kw">await</span> page.<span class="fn">getByLabel</span>(<span class="str">'Senha'</span>).<span class="fn">fill</span>(<span class="str">'segredo'</span>);
+  <span class="kw">await</span> page.<span class="fn">getByRole</span>(<span class="str">'button'</span>, { name: <span class="str">'Entrar'</span> }).<span class="fn">click</span>();
+
+  <span class="kw">await</span> <span class="fn">expect</span>(page).<span class="fn">toHaveURL</span>(<span class="str">'/dashboard'</span>);
+  <span class="kw">await</span> <span class="fn">expect</span>(page.<span class="fn">getByText</span>(<span class="str">'Bem-vindo'</span>)).<span class="fn">toBeVisible</span>();
+});
+                    </div>
+
+                    <div class="highlight green-highlight animate delay-3">
+                        <i class="fa-solid fa-circle-check"></i>
+
+                        <div>
+                            <strong>Boas práticas embutidas:</strong>
+                            locators baseados em papéis e rótulos (acessibilidade),
+                            espera automática e assertions resilientes a
+                            timing — três das maiores causas de testes
+                            instáveis desaparecem por padrão.
+                        </div>
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 14 — PLAYWRIGHT RECURSOS -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">14</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-toolbox"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Playwright — Recursos Avançados
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-3 animate delay-1">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-record-vinyl"></i>
+                            </div>
+
+                            <h4>Codegen</h4>
+
+                            <p>
+                                Grava interações do usuário e gera
+                                código de teste automaticamente.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-timeline"></i>
+                            </div>
+
+                            <h4>Trace Viewer</h4>
+
+                            <p>
+                                Depuração com "viagem no tempo":
+                                snapshots, logs, rede e console
+                                em cada passo.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-code"></i>
+                            </div>
+
+                            <h4>VS Code</h4>
+
+                            <p>
+                                Extensão oficial: execução, depuração
+                                e geração de testes dentro do editor.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon purple">
+                                <i class="fa-solid fa-network-wired"></i>
+                            </div>
+
+                            <h4>Network Mock</h4>
+
+                            <p>
+                                Intercepta e simula APIs
+                                com <code>page.route()</code>.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon pink">
+                                <i class="fa-solid fa-shuffle"></i>
+                            </div>
+
+                            <h4>Paralelismo</h4>
+
+                            <p>
+                                Testes isolados em BrowserContexts,
+                                com workers paralelos.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-mobile-screen"></i>
+                            </div>
+
+                            <h4>Dispositivos</h4>
+
+                            <p>
+                                Emulação de dispositivos reais,
+                                viewports e touch.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 15 — CI/CD -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">15</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-infinity"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Testes no Pipeline CI/CD
+                        </h2>
+                    </div>
+
+                    <p class="description animate delay-1">
+                        O valor real dos testes automatizados cresce na
+                        <strong>integração contínua</strong>. Colocar testes
+                        unitários, de integração e smoke E2E no workflow de CI
+                        (GitHub Actions, Jenkins etc.) faz com que cada commit
+                        dispare a verificação — e o problema aparece
+                        <strong>antes do merge</strong>.
+                    </p>
+
+                    <div class="highlight gold-highlight animate delay-2">
+                        <i class="fa-solid fa-stopwatch"></i>
+
+                        <div>
+                            <strong>Orçamento de feedback:</strong>
+                            testes unitários dão feedback em
+                            <strong>segundos</strong> no watch local;
+                            integração termina em <strong>minutos</strong> no PR;
+                            smoke E2E serve de gate do PR, e a regressão
+                            completa pode rodar à noite.
+                        </div>
+                    </div>
+
+                    <div class="grid grid-3 animate delay-3">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+
+                            <h4>Unit — Segundos</h4>
+
+                            <p>
+                                Watch mode local: ciclo de feedback
+                                quase instantâneo.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-clock"></i>
+                            </div>
+
+                            <h4>Integração — Minutos</h4>
+
+                            <p>
+                                Executada no PR, antes do merge.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+
+                            <h4>E2E — Gate</h4>
+
+                            <p>
+                                Smoke no PR; regressão completa
+                                em execução noturna.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 16 — ESCOLHAS -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">16</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper">
+
+                    <div class="title-row animate">
+                        <div class="title-icon">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                        </div>
+
+                        <h2 class="title-line">
+                            Como Escolher
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-2 animate delay-1">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-plug"></i>
+                            </div>
+
+                            <h4>Linguagem e framework</h4>
+
+                            <p>
+                                <strong>Vitest</strong> tem suporte nativo a
+                                Vite/ESM; <strong>Jest</strong> tem ecossistema
+                                mais maduro, mas configuração mais pesada.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon purple">
+                                <i class="fa-solid fa-masks-theater"></i>
+                            </div>
+
+                            <h4>E2E: Playwright primeiro</h4>
+
+                            <p>
+                                Cross-browser + espera automática + Trace
+                                Viewer formam, hoje, o conjunto mais
+                                equilibrado do mercado.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-crosshairs"></i>
+                            </div>
+
+                            <h4>Comece pelos caminhos críticos</h4>
+
+                            <p>
+                                Não persiga 100% de cobertura E2E:
+                                proteja login, pagamento e CRUDs centrais.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-infinity"></i>
+                            </div>
+
+                            <h4>Integração com CI</h4>
+
+                            <p>
+                                O Playwright fornece exemplos de configuração
+                                para os principais provedores de CI —
+                                adoção barata.
+                            </p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+
+            <!-- 17 — FINAL -->
+            <article class="slide content">
+
+                <div class="slide-number">
+                    <span class="current">17</span>
+                    <span class="separator">/</span>
+                    <span class="total">17</span>
+                </div>
+
+                <div class="content-wrapper" style="text-align:center">
+
+                    <div class="animate" style="font-size:4rem;color:var(--primary);margin-bottom:15px;">
+                        <i class="fa-solid fa-vial-circle-check"></i>
+                    </div>
+
+                    <h2 class="animate delay-1" style="font-size:clamp(2.4rem,6vw,4.5rem);border:0;">
+                        O Teste é <span class="primary">Parte do Código</span>
+                    </h2>
+
+                    <p class="description animate delay-2" style="margin:20px auto 35px;text-align:center;font-size:1.2rem;">
+                        "Sem testes, você está apenas torcendo."
+                    </p>
+
+                    <div class="grid grid-3 animate delay-3" style="max-width:800px;margin-inline:auto">
+
+                        <div class="card">
+                            <div class="card-icon green">
+                                <i class="fa-solid fa-cube"></i>
+                            </div>
+
+                            <h4>Unitários</h4>
+
+                            <p>
+                                Rápidos, baratos e estáveis —
+                                a primeira linha de defesa.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon gold">
+                                <i class="fa-solid fa-puzzle-piece"></i>
+                            </div>
+
+                            <h4>Integração</h4>
+
+                            <p>
+                                Capturam defeitos reais
+                                nas fronteiras entre módulos.
+                            </p>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-icon blue">
+                                <i class="fa-solid fa-masks-theater"></i>
+                            </div>
+
+                            <h4>E2E — Playwright</h4>
+
+                            <p>
+                                Protegem caminhos críticos
+                                e dão confiança para o time lançar.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <div class="highlight gold-highlight animate delay-4" style="max-width:800px;margin:25px auto 0;text-align:left;">
+                        <i class="fa-solid fa-lightbulb"></i>
+
+                        <div>
+                            <strong>Testar é investir:</strong>
+                            cada camada existe para responder uma pergunta
+                            diferente — o unitário pergunta "este pedaço está
+                            correto?", a integração pergunta "estes pedaços
+                            conversam?", o E2E pergunta "o usuário consegue?".
+                        </div>
+                    </div>
+
+                </div>
+
+            </article>
+
+        </section>
+
+    </main>
+
+
+    <script>
+        (() => {
+
+            "use strict";
+
+            const slides = [
+                ...document.querySelectorAll(".slide")
+            ];
+
+            const totalSlides = slides.length;
+
+            const previousButton = document.getElementById("previous");
+            const nextButton = document.getElementById("next");
+            const fullscreenButton = document.getElementById("fullscreen");
+            const currentNumber = document.getElementById("currentNumber");
+            const totalNumber = document.getElementById("totalNumber");
+            const progress = document.getElementById("progress");
+            const dotsContainer = document.getElementById("dots");
+
+            let currentSlide = 0;
+            let locked = false;
+
+            totalNumber.textContent = String(totalSlides).padStart(2, "0");
+
+            slides.forEach((_, index) => {
+
+                const dot = document.createElement("button");
+                dot.className = "dot";
+                dot.type = "button";
+                dot.setAttribute("aria-label", `Ir para o slide ${index + 1}`);
+
+                dot.addEventListener("click", () => goToSlide(index));
+
+                dotsContainer.appendChild(dot);
+
+            });
+
+            const dots = [...document.querySelectorAll(".dot")];
+
+            function updateInterface() {
+
+                const number = currentSlide + 1;
+
+                currentNumber.textContent = String(number).padStart(2, "0");
+
+                const percentage = (number / totalSlides) * 100;
+                progress.style.width = `${percentage}%`;
+
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle("active", index === currentSlide);
+                });
+
+                slides.forEach((slide, index) => {
+                    slide.classList.toggle("active", index === currentSlide);
+                });
+
+            }
+
+            function resetAnimations(slide) {
+
+                const animatedElements = slide.querySelectorAll(".animate");
+
+                animatedElements.forEach(element => {
+
+                    element.style.animation = "none";
+                    void element.offsetWidth;
+                    element.style.animation = "";
+
+                });
+
+            }
+
+            function goToSlide(index) {
+
+                if (locked) return;
+
+                if (index < 0) {
+                    index = 0;
+                }
+
+                if (index >= totalSlides) {
+                    index = totalSlides - 1;
+                }
+
+                if (index === currentSlide) return;
+
+                locked = true;
+
+                slides[currentSlide].classList.remove("active");
+                resetAnimations(slides[index]);
+
+                currentSlide = index;
+
+                updateInterface();
+
+                setTimeout(() => {
+                    locked = false;
+                }, 500);
+
+            }
+
+            document.addEventListener("keydown", (event) => {
+
+                if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    goToSlide(currentSlide - 1);
+                }
+
+                if (event.key === "ArrowRight" || event.key === " ") {
+                    event.preventDefault();
+                    goToSlide(currentSlide + 1);
+                }
+
+                if (event.key === "Home") {
+                    event.preventDefault();
+                    goToSlide(0);
+                }
+
+                if (event.key === "End") {
+                    event.preventDefault();
+                    goToSlide(totalSlides - 1);
+                }
+
+            });
+
+            previousButton.addEventListener("click", () => goToSlide(currentSlide - 1));
+            nextButton.addEventListener("click", () => goToSlide(currentSlide + 1));
+
+            fullscreenButton.addEventListener("click", () => {
+
+                const element = document.documentElement;
+
+                if (!document.fullscreenElement) {
+
+                    element.requestFullscreen().catch(() => {});
+
+                } else {
+
+                    document.exitFullscreen().catch(() => {});
+
+                }
+
+            });
+
+            let touchStart = 0;
+            let touchEnd = 0;
+
+            document.addEventListener("touchstart", (event) => {
+                touchStart = event.changedTouches[0].screenX;
+            });
+
+            document.addEventListener("touchend", (event) => {
+                touchEnd = event.changedTouches[0].screenX;
+                const diff = touchStart - touchEnd;
+
+                if (Math.abs(diff) > 50) {
+
+                    if (diff > 0) {
+                        goToSlide(currentSlide + 1);
+                    } else {
+                        goToSlide(currentSlide - 1);
+                    }
+
+                }
+            });
+
+            slides[0].classList.add("active");
+            dots[0].classList.add("active");
+            currentNumber.textContent = "01";
+
+            console.log(`🧪 Testes no Front-end — Apresentação carregada! (${totalSlides} slides)`);
+
+        })();
+    </script>
+
+</body>
+</html>
